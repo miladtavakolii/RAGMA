@@ -1,4 +1,4 @@
-from typing import Optional, List
+from typing import List
 from ingestion.load_documents import DocumentLoader
 from ingestion.chunking import DocumentChunker
 from ingestion.upsert_documents import EmbedAndStore
@@ -43,6 +43,7 @@ class IngestPipeline:
         data_dir: str,
         collection_name: str,
         embedder: Embeddings,
+        vectorstore_backend: str,
         chunk_size: int = 1000,
         chunk_overlap: int = 200,
         batch_size: int = 100,
@@ -71,6 +72,7 @@ class IngestPipeline:
         self.chunk_overlap = chunk_overlap
         self.batch_size = batch_size
         self.embedder = embedder
+        self.vectorstore_backend = vectorstore_backend
 
     def run(self) -> None:
         '''
@@ -114,6 +116,7 @@ class IngestPipeline:
         embed_store = EmbedAndStore(
             embedder=self.embedder,
             collection_name=self.collection_name,
+            vectorstore_backend=self.vectorstore_backend,
             batch_size=self.batch_size
         )
         embed_store.run(chunks)

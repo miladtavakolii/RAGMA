@@ -4,10 +4,10 @@ from langchain_qdrant import QdrantVectorStore
 from langchain_core.embeddings import Embeddings
 from langchain_core.documents import Document
 from typing import List, Dict, Optional
-import numpy as np
+from .base import BaseVectorStore
 
 
-class QdrantClientWrapper:
+class QdrantVectorStoreAdapter(BaseVectorStore):
     '''
     A comprehensive wrapper class for QdrantClient to manage vector embeddings storage and retrieval.
 
@@ -30,19 +30,6 @@ class QdrantClientWrapper:
     All embeddings stored via this wrapper are expected to be normalized (unit length), which
     ensures that cosine similarity calculations in Qdrant behave as expected and provides
     consistency across different embedding sources.
-
-    Example usage:
-    --------------
-    >>> from embedding import SentenceTransformersEmbedding
-    >>> embedder = SentenceTransformersEmbedding()
-    >>> docs = ["شبکه عصبی چیست؟", "یادگیری ماشین چگونه کار می‌کند؟"]
-    >>> vectors = embedder.embed_texts(docs)
-    >>> metadatas = [{"topic": "technical"}, {"topic": "technical"}]
-    >>> qclient = QdrantClientWrapper(vector_dim=vectors.shape[1])
-    >>> qclient.upsert_documents(embeddings=vectors, metadatas=metadatas)
-    >>> query_vec = embedder.embed_query("مقدمه‌ای بر شبکه‌های عصبی")
-    >>> results = qclient.search(query_vec, limit=3)
-    >>> print(results)
     '''
 
     def __init__(

@@ -2,13 +2,13 @@ from typing import List
 from langchain_core.documents import Document
 import numpy as np
 
-from vectorstore.qdrant import QdrantClientWrapper
+from vectorstore.vector_store_factory import VectorStoreFactory
 from langchain_core.embeddings import Embeddings
 
 
 class EmbedAndStore:
     '''
-    Embeds chunked documents using a local embedding model and stores them in Qdrant.
+    Embeds chunked documents using a local embedding model and stores them in vectorstore.
 
     This class represents the final step of the ingestion pipeline in a vector-based
     retrieval system (e.g., RAG, semantic search, document QA).
@@ -16,7 +16,7 @@ class EmbedAndStore:
     It is designed to work with:
     - LangChain `Document` objects as input
     - A local embedding model (e.g., embedding-gemma via Sentence-Transformers)
-    - A custom Qdrant client wrapper for full control over storage and retrieval
+    - A custom vectorstore client wrapper for full control over storage and retrieval
 
     Architecture Position
     ---------------------
@@ -28,7 +28,7 @@ class EmbedAndStore:
     ----------------
     - Extract text and metadata from LangChain `Document` objects
     - Generate dense vector embeddings using a local embedding model
-    - Store embeddings + metadata in Qdrant using `QdrantClientWrapper`
+    - Store embeddings + metadata in vectorstore
 
     What this class intentionally avoids
     ------------------------------------
@@ -68,9 +68,10 @@ class EmbedAndStore:
         self,
         embedder: Embeddings,
         collection_name: str,
+        vectorstore_backend: str = 'qdrant',
         batch_size: int = 100,
-        qdrant_host: str = 'localhost',
-        qdrant_port: int = 6333,
+        vectorstore_host: str = 'localhost',
+        vectorstore_port: int = 6333,
     ):
         '''
         Initialize the EmbedAndStore component.
@@ -85,30 +86,30 @@ class EmbedAndStore:
             - embed_texts(List[str]) -> np.ndarray
 
         collection_name : str
-            Name of the Qdrant collection where embeddings will be stored.
+            Name of the vectorstore collection where embeddings will be stored.
 
-        qdrant_host : str, default='localhost'
-            Hostname or IP address of the Qdrant server.
+        vectorstore_host : str, default='localhost'
+            Hostname or IP address of the vectorstore server.
 
-        qdrant_port : int, default=6333
-            Port number on which the Qdrant server is listening.
+        vectorstore_port : int, default=6333
+            Port number on which the vectorstore server is listening.
         '''
         self.embedder = embedder
         self.collection_name = collection_name
         self.batch_size = batch_size
-        self.qdrant_host = qdrant_host
-        self.qdrant_port = qdrant_port
+        self.vectorstore_host = vectorstore_host
+        self.vectorstore_port = vectorstore_port
 
     def run(self, documents: List[Document]) -> None:
         '''
-        Embed document chunks and store them in Qdrant.
+        Embed document chunks and store them in vectorstore.
 
         This method performs the following steps:
         1. Extracts text (`page_content`) from each LangChain Document
         2. Extracts metadata (`metadata`) for each chunk
         3. Generates embeddings using the configured local embedding model
-        4. Creates (or reuses) a Qdrant collection
-        5. Upserts vectors and metadata into Qdrant
+        4. Creates (or reuses) a vectorstore collection
+        5. Upserts vectors and metadata into vectorstore
 
         Parameters
         ----------
@@ -127,27 +128,28 @@ class EmbedAndStore:
         Notes
         -----
         - All embeddings are expected to be L2-normalized
-        - Metadata is stored as payload in Qdrant
+        - Metadata is stored as payload in vectorstore
         - Document IDs are auto-generated per ingestion run
         '''
         if not documents:
             raise ValueError(
                 'No documents provided for embedding and storage.')
 
-        # Initialize Qdrant client wrapper
+        # Initialize vectorstore client wrapper
         vector_size = len(self.embedder.embed_query("sample text"))
-        qdrant = QdrantClientWrapper(
+        vectorstore = VectorStoreFactory.create(
+            backend='qdrant',
             embeddings=self.embedder,
-            host=self.qdrant_host,
-            port=self.qdrant_port,
             collection_name=self.collection_name,
             vector_dim=vector_size,
+            host=self.vectorstore_host,
+            port=self.vectorstore_port,
         )
 
         # Store vectors
-        qdrant.upsert_documents(documents)
+        vectorstore.upsert_documents(documents)
 
         print(
             f'[EmbedAndStore] Successfully stored {len(documents)} chunks '
-            f'in Qdrant collection "{self.collection_name}".'
+            f'in vectorstore collection "{self.collection_name}".'
         )

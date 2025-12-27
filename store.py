@@ -8,6 +8,7 @@ if __name__ == "__main__":
         data_dir="data/raw",
         collection_name="knowledge_base",
         embedder=embedder,
+        vectorstore_backend='qdrant',
         chunk_size=1000,
         chunk_overlap=200,
         batch_size=100
