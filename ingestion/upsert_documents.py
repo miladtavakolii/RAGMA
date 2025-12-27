@@ -148,8 +148,3 @@ class EmbedAndStore:
 
         # Store vectors
         vectorstore.upsert_documents(documents)
-
-        print(
-            f'[EmbedAndStore] Successfully stored {len(documents)} chunks '
-            f'in vectorstore collection "{self.collection_name}".'
-        )

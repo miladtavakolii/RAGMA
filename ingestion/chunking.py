@@ -77,10 +77,4 @@ class DocumentChunker:
             return []
 
         chunks = self.splitter.split_documents(documents)
-
-        # Optional sanity check / debug log
-        print(
-            f'Chunked {len(documents)} documents into {len(chunks)} chunks'
-        )
-
         return chunks

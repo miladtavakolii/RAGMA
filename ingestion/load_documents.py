@@ -136,6 +136,4 @@ class DocumentLoader:
 
                     except Exception as e:
                         print(f'[Warning] Failed to load {file_path}: {e}')
-
-        print(f'[DocumentLoader] Loaded {len(documents)} documents')
         return documents

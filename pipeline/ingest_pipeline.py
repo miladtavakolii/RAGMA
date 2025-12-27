@@ -104,13 +104,13 @@ class IngestPipeline:
         if not documents:
             raise ValueError(f'No documents found in {self.data_dir}')
 
-        print(f'[IngestPipeline] Loaded {len(documents)} documents.')
+        print(f'Loaded {len(documents)} documents.')
 
         # 2. Chunk documents
         chunker = DocumentChunker(
             chunk_size=self.chunk_size, chunk_overlap=self.chunk_overlap)
         chunks: List[Document] = chunker.chunk(documents)
-        print(f'[IngestPipeline] Created {len(chunks)} chunks from documents.')
+        print(f'Created {len(chunks)} chunks from documents.')
 
         # 3. Embed and store
         embed_store = EmbedAndStore(
@@ -121,4 +121,8 @@ class IngestPipeline:
         )
         embed_store.run(chunks)
         print(
-            f'[IngestPipeline] Ingestion complete for collection "{self.collection_name}".')
+            f'Successfully stored {len(documents)} chunks '
+            f'in vectorstore collection "{self.collection_name}".'
+        )
+        print(
+            f'Ingestion complete for collection "{self.collection_name}".')
