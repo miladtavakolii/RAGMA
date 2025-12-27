@@ -33,7 +33,7 @@ class SentenceTransformersEmbedding:
         
         Example
         -------
-        >>> embedder = EmbeddingGemma(model_name='google/embeddinggemma-300m')
+        >>> embedder = SentenceTransformersEmbedding(model_name='google/embeddinggemma-300m')
         '''
         self.model = SentenceTransformer(model_name)
 
