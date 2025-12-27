@@ -3,6 +3,7 @@ from .base import BaseVectorStore
 from .qdrant import QdrantVectorStoreAdapter
 from typing import Any
 
+
 class VectorStoreFactory:
     '''
     Factory class for creating vector store instances.
