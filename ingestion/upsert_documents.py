@@ -68,6 +68,7 @@ class EmbedAndStore:
         self,
         embedder: SentenceTransformersEmbedding,
         collection_name: str,
+        batch_size: int = 100,
         qdrant_host: str = 'localhost',
         qdrant_port: int = 6333,
     ):
@@ -94,6 +95,7 @@ class EmbedAndStore:
         '''
         self.embedder = embedder
         self.collection_name = collection_name
+        self.batch_size = batch_size
         self.qdrant_host = qdrant_host
         self.qdrant_port = qdrant_port
 
@@ -129,13 +131,15 @@ class EmbedAndStore:
         - Document IDs are auto-generated per ingestion run
         '''
         if not documents:
-            raise ValueError('No documents provided for embedding and storage.')
+            raise ValueError(
+                'No documents provided for embedding and storage.')
 
         texts = [doc.page_content for doc in documents]
         metadatas = [doc.metadata for doc in documents]
 
         # Generate embeddings
         embeddings: np.ndarray = self.embedder.embed_texts(texts)
+        print('[EmbedAndStore] Generated embeddings for ', len(texts), ' texts')
 
         # Initialize Qdrant client wrapper
         qdrant = QdrantClientWrapper(
@@ -146,10 +150,11 @@ class EmbedAndStore:
         )
 
         # Store vectors
-        qdrant.upsert_documents(
-            embeddings=embeddings,
-            metadatas=metadatas,
-        )
+        for i in range(0, len(embeddings), self.batch_size):
+            qdrant.upsert_documents(
+                embeddings=embeddings[i:i+self.batch_size],
+                metadatas=metadatas[i:i+self.batch_size],
+            )
 
         print(
             f'[EmbedAndStore] Successfully stored {len(texts)} chunks '
