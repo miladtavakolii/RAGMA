@@ -111,7 +111,8 @@ class QdrantClientWrapper:
             Optional list of integer IDs for the documents. If None, IDs are auto-assigned.
         '''
         if ids is None:
-            ids = list(range(len(embeddings)))
+            last_id = self.client.count('knowledge_base').count
+            ids = list(range(last_id + 1, last_id + 1 + len(embeddings)))
 
         points = [
             PointStruct(id=ids[i], vector=embeddings[i], payload=metadatas[i])
