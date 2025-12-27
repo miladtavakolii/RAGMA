@@ -1,6 +1,5 @@
 from typing import List
 from langchain_core.documents import Document
-import numpy as np
 
 from vectorstore.vector_store_factory import VectorStoreFactory
 from langchain_core.embeddings import Embeddings
@@ -69,7 +68,6 @@ class EmbedAndStore:
         embedder: Embeddings,
         collection_name: str,
         vectorstore_backend: str = 'qdrant',
-        batch_size: int = 100,
         vectorstore_host: str = 'localhost',
         vectorstore_port: int = 6333,
     ):
@@ -96,7 +94,6 @@ class EmbedAndStore:
         '''
         self.embedder = embedder
         self.collection_name = collection_name
-        self.batch_size = batch_size
         self.vectorstore_host = vectorstore_host
         self.vectorstore_port = vectorstore_port
 

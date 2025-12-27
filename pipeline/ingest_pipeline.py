@@ -27,8 +27,6 @@ class IngestPipeline:
         Maximum number of characters per chunk.
     chunk_overlap : int
         Number of overlapping characters between chunks.
-    batch_size : int
-        Number of embeddings to upsert in a single batch.
     embedder : Embeddings
         Local embedding model for generating dense vector representations.
 
@@ -46,7 +44,7 @@ class IngestPipeline:
         vectorstore_backend: str,
         chunk_size: int = 1000,
         chunk_overlap: int = 200,
-        batch_size: int = 100,
+
     ):
         '''
         Initialize the IngestPipeline with configurable parameters.
@@ -63,14 +61,11 @@ class IngestPipeline:
             Maximum number of characters per document chunk.
         chunk_overlap : int, default=150
             Number of overlapping characters between consecutive chunks.
-        batch_size : int, default=100
-            Number of embeddings to upsert into Qdrant at once.
         '''
         self.data_dir = data_dir
         self.collection_name = collection_name
         self.chunk_size = chunk_size
         self.chunk_overlap = chunk_overlap
-        self.batch_size = batch_size
         self.embedder = embedder
         self.vectorstore_backend = vectorstore_backend
 
@@ -117,7 +112,6 @@ class IngestPipeline:
             embedder=self.embedder,
             collection_name=self.collection_name,
             vectorstore_backend=self.vectorstore_backend,
-            batch_size=self.batch_size
         )
         embed_store.run(chunks)
         print(
