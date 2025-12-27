@@ -126,8 +126,7 @@ class DocumentLoader:
                             doc.metadata.update(
                                 {
                                     'topic': topic,
-                                    'filename': file_name,
-                                    'filetype': ext,
+                                    'filetype': ext[1:],
                                     'source': os.path.relpath(
                                         file_path, self.data_dir
                                     ),
