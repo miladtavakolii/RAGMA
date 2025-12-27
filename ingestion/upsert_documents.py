@@ -2,8 +2,8 @@ from typing import List
 from langchain_core.documents import Document
 import numpy as np
 
-from embedding.sentence_transformers_embedding import SentenceTransformersEmbedding
 from vectorstore.qdrant import QdrantClientWrapper
+from langchain_core.embeddings import Embeddings
 
 
 class EmbedAndStore:
@@ -66,7 +66,7 @@ class EmbedAndStore:
 
     def __init__(
         self,
-        embedder: SentenceTransformersEmbedding,
+        embedder: Embeddings,
         collection_name: str,
         batch_size: int = 100,
         qdrant_host: str = 'localhost',
@@ -134,31 +134,20 @@ class EmbedAndStore:
             raise ValueError(
                 'No documents provided for embedding and storage.')
 
-        texts = [doc.page_content for doc in documents]
-        metadatas = [
-            {**doc.metadata, "text": doc.page_content} for doc in documents
-        ]
-
-        # Generate embeddings
-        embeddings: np.ndarray = self.embedder.embed_texts(texts)
-        print('[EmbedAndStore] Generated embeddings for ', len(texts), ' texts')
-
         # Initialize Qdrant client wrapper
+        vector_size = len(self.embedder.embed_query("sample text"))
         qdrant = QdrantClientWrapper(
+            embeddings=self.embedder,
             host=self.qdrant_host,
             port=self.qdrant_port,
             collection_name=self.collection_name,
-            vector_dim=embeddings.shape[1],
+            vector_dim=vector_size,
         )
 
         # Store vectors
-        for i in range(0, len(embeddings), self.batch_size):
-            qdrant.upsert_documents(
-                embeddings=embeddings[i:i+self.batch_size],
-                metadatas=metadatas[i:i+self.batch_size],
-            )
+        qdrant.upsert_documents(documents)
 
         print(
-            f'[EmbedAndStore] Successfully stored {len(texts)} chunks '
+            f'[EmbedAndStore] Successfully stored {len(documents)} chunks '
             f'in Qdrant collection "{self.collection_name}".'
         )

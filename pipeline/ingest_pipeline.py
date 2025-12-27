@@ -2,8 +2,8 @@ from typing import Optional, List
 from ingestion.load_documents import DocumentLoader
 from ingestion.chunking import DocumentChunker
 from ingestion.upsert_documents import EmbedAndStore
-from embedding.sentence_transformers_embedding import SentenceTransformersEmbedding
 from langchain_core.documents import Document
+from langchain_core.embeddings import Embeddings
 
 
 class IngestPipeline:
@@ -29,7 +29,7 @@ class IngestPipeline:
         Number of overlapping characters between chunks.
     batch_size : int
         Number of embeddings to upsert in a single batch.
-    embedder : EmbeddingGemma
+    embedder : Embeddings
         Local embedding model for generating dense vector representations.
 
     Methods
@@ -42,7 +42,7 @@ class IngestPipeline:
         self,
         data_dir: str,
         collection_name: str,
-        embedder: Optional[SentenceTransformersEmbedding] = None,
+        embedder: Embeddings,
         chunk_size: int = 1000,
         chunk_overlap: int = 200,
         batch_size: int = 100,
@@ -56,8 +56,8 @@ class IngestPipeline:
             Path to the root directory containing raw documents organized by topic.
         collection_name : str
             Name of the Qdrant collection where embeddings will be stored.
-        embedder : Optional[EmbeddingGemma]
-            Pre-initialized embedding model. If None, a default embedding-gemma-300m model is used.
+        embedder : Embeddings
+            Pre-initialized embedding model.
         chunk_size : int, default=800
             Maximum number of characters per document chunk.
         chunk_overlap : int, default=150
@@ -70,7 +70,7 @@ class IngestPipeline:
         self.chunk_size = chunk_size
         self.chunk_overlap = chunk_overlap
         self.batch_size = batch_size
-        self.embedder = embedder or SentenceTransformersEmbedding(model_name='google/embeddinggemma-300m')
+        self.embedder = embedder
 
     def run(self) -> None:
         '''
@@ -105,7 +105,8 @@ class IngestPipeline:
         print(f'[IngestPipeline] Loaded {len(documents)} documents.')
 
         # 2. Chunk documents
-        chunker = DocumentChunker(chunk_size=self.chunk_size, chunk_overlap=self.chunk_overlap)
+        chunker = DocumentChunker(
+            chunk_size=self.chunk_size, chunk_overlap=self.chunk_overlap)
         chunks: List[Document] = chunker.chunk(documents)
         print(f'[IngestPipeline] Created {len(chunks)} chunks from documents.')
 
@@ -116,4 +117,5 @@ class IngestPipeline:
             batch_size=self.batch_size
         )
         embed_store.run(chunks)
-        print(f'[IngestPipeline] Ingestion complete for collection "{self.collection_name}".')
+        print(
+            f'[IngestPipeline] Ingestion complete for collection "{self.collection_name}".')

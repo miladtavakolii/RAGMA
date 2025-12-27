@@ -1,8 +1,8 @@
 from pipeline.ingest_pipeline import IngestPipeline
-from embedding.sentence_transformers_embedding import SentenceTransformersEmbedding
+from langchain_huggingface import HuggingFaceEmbeddings
 
 if __name__ == "__main__":
-    embedder = SentenceTransformersEmbedding(model_name="google/embeddinggemma-300m")
+    embedder = HuggingFaceEmbeddings(model_name="google/embeddinggemma-300m")
     
     pipeline = IngestPipeline(
         data_dir="data/raw",

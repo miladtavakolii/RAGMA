@@ -1,5 +1,8 @@
 from qdrant_client import QdrantClient
-from qdrant_client.models import PointStruct, Distance, VectorParams
+from qdrant_client.models import Distance, VectorParams
+from langchain_qdrant import QdrantVectorStore
+from langchain_core.embeddings import Embeddings
+from langchain_core.documents import Document
 from typing import List, Dict, Optional
 import numpy as np
 
@@ -44,10 +47,11 @@ class QdrantClientWrapper:
 
     def __init__(
         self,
+        embeddings: Embeddings,
         host: str = 'localhost',
         port: int = 6333,
         collection_name: str = 'knowledge_base',
-        vector_dim: Optional[int] = None
+        vector_dim: Optional[int] = None,
     ):
         '''
         Initialize the Qdrant client and optionally create a collection if it does not exist.
@@ -77,7 +81,7 @@ class QdrantClientWrapper:
             if vector_dim is None:
                 raise ValueError(
                     'vector_dim must be specified for new collection.')
-            self.client.recreate_collection(
+            self.client.create_collection(
                 collection_name=collection_name,
                 vectors_config=VectorParams(
                     size=vector_dim,
@@ -85,73 +89,104 @@ class QdrantClientWrapper:
                 )
             )
 
+        self.vector_store = QdrantVectorStore(
+            client=self.client,
+            collection_name=collection_name,
+            embedding=embeddings,
+        )
+
     def upsert_documents(
         self,
-        embeddings: np.ndarray,
-        metadatas: List[Dict],
-        ids: Optional[List[int]] = None
+        documents: list[Document],
     ) -> None:
         '''
-        Upsert multiple documents into the Qdrant collection with their embeddings and metadata.
+        Upsert LangChain Document objects into Qdrant using the integrated vector store.
 
-        This method allows batch insertion or update of documents. Each embedding vector
-        corresponds to a single document and can include associated metadata such as topic,
-        source, or any other custom information. If IDs are not provided, they will be
-        auto-generated as sequential integers.
+        This method provides a high-level, LangChain-native interface for storing documents
+        in Qdrant. Instead of manually computing embeddings and passing raw vectors, it relies
+        on the configured `QdrantVectorStore` and `Embeddings` implementation to:
+
+        1. Automatically generate embeddings for each document's text (`page_content`)
+        2. Store the resulting vectors in the Qdrant collection
+        3. Persist document metadata as Qdrant payloads
+
+        This approach is particularly suitable when:
+        - You are fully operating inside the LangChain ecosystem
+        - You want tight integration with retrievers, chains, and agents
+        - You prefer declarative ingestion over low-level vector manipulation
 
         Parameters
         ----------
-        embeddings : np.ndarray
-            2D NumPy array of shape (num_docs, vector_dim) containing embedding vectors
-            for each document.
-        metadatas : List[Dict]
-            List of metadata dictionaries corresponding to each embedding. Each dictionary
-            can store arbitrary information about the document.
-        ids : Optional[List[int]]
-            Optional list of integer IDs for the documents. If None, IDs are auto-assigned.
+        documents : List[langchain_core.documents.Document]
+            A list of LangChain `Document` objects to be stored.
+
+            Each Document is expected to contain:
+            - page_content : str
+                The textual content to be embedded
+            - metadata : dict
+                Arbitrary key-value metadata (e.g. topic, source, filename, page_number)
+
+        Raises
+        ------
+        ValueError
+            If the vector store has not been initialized with an embedding model.
+
+        Notes
+        -----
+        - This method requires `embeddings` to be provided when initializing
+          `QdrantClientWrapper`
+        - Embedding generation and normalization are handled internally by LangChain
+        - Document IDs are managed internally by Qdrant unless explicitly configured
         '''
-        if ids is None:
-            last_id = self.client.count('knowledge_base').count
-            ids = list(range(last_id + 1, last_id + 1 + len(embeddings)))
-
-        points = [
-            PointStruct(id=ids[i], vector=embeddings[i], payload=metadatas[i])
-            for i in range(len(embeddings))
-        ]
-
-        self.client.upsert(collection_name=self.collection_name, points=points)
+        self.vector_store.add_documents(documents=documents)
 
     def search(
         self,
-        query_vector: np.ndarray,
+        query: str,
         limit: int = 5
     ) -> List[Dict]:
         '''
-        Search for the most similar embeddings to a given query vector in the collection.
+        Perform semantic similarity search using a raw text query.
 
-        This method performs a nearest-neighbor search using cosine similarity and returns
-        a list of documents that are most similar to the provided query vector. Each result
-        includes the document ID, similarity score, and associated metadata.
+        This method enables end-to-end semantic retrieval by:
+        1. Converting the input query text into an embedding vector
+           using the configured LangChain `Embeddings` model
+        2. Executing a similarity search against the Qdrant collection
+        3. Returning the most relevant documents along with similarity scores
+
+        Unlike `search_vector`, this method abstracts away embedding generation
+        and is ideal for user-facing query workflows such as:
+        - Question answering
+        - Conversational agents
+        - RAG pipelines
+        - Multi-agent routing systems
 
         Parameters
         ----------
-        query_vector : np.ndarray
-            1D NumPy array representing the embedding vector of the query.
-        limit : int
-            Maximum number of results to return. Defaults to 5.
+        query : str
+            The input query text to search for semantically similar documents.
+
+        limit : int, default=5
+            Maximum number of results to return.
 
         Returns
         -------
         List[Dict]
-            List of dictionaries, each containing:
-            - 'id': The ID of the document in Qdrant.
-            - 'score': The similarity score (cosine similarity).
-            - 'payload': The metadata dictionary associated with the document.
-        '''
-        results = self.client.query_points(
-            collection_name=self.collection_name,
-            query=query_vector,
-            limit=limit
-        ).points
+            A list of dictionaries, each containing:
+            - 'id' : Optional[str | int]
+                Document identifier (if available)
+            - 'score' : float
+                Similarity score between the query and the document
+            - 'payload' : dict
+                Metadata associated with the matched document
 
-        return [{'id': r.id, 'score': r.score, 'payload': r.payload} for r in results]
+        Notes
+        -----
+        - Requires `QdrantVectorStore` to be initialized
+        - Uses cosine similarity under the hood
+        - Scores are higher for more semantically similar documents
+        '''
+        results = self.vector_store.similarity_search_with_score(
+            query, k=limit)
+
+        return [{'id': doc.id, 'score': score, 'payload': doc.metadata} for doc, score in results]
