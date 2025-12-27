@@ -16,7 +16,7 @@ class SentenceTransformersEmbedding:
     cosine similarity calculations and other downstream tasks that rely on vector similarity.
     '''
 
-    def __init__(self, model_name: str = 'embedding-gemma-300m'):
+    def __init__(self, model_name: str = 'google/embeddinggemma-300m'):
         '''
         Initializes the SentenceTransformer model for SentenceTransformersEmbedding.
 
@@ -28,12 +28,12 @@ class SentenceTransformersEmbedding:
         ----------
         model_name : str
             Name or path of the pretrained Sentence-Transformer model. By default, 
-            'embedding-gemma-300m' is used. The model should be compatible with 
+            'google/embeddinggemma-300m' is used. The model should be compatible with 
             Sentence-Transformers encoding interface.
         
         Example
         -------
-        >>> embedder = EmbeddingGemma(model_name='embedding-gemma-300m')
+        >>> embedder = EmbeddingGemma(model_name='google/embeddinggemma-300m')
         '''
         self.model = SentenceTransformer(model_name)
 
