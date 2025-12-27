@@ -135,7 +135,9 @@ class EmbedAndStore:
                 'No documents provided for embedding and storage.')
 
         texts = [doc.page_content for doc in documents]
-        metadatas = [doc.metadata for doc in documents]
+        metadatas = [
+            {**doc.metadata, "text": doc.page_content} for doc in documents
+        ]
 
         # Generate embeddings
         embeddings: np.ndarray = self.embedder.embed_texts(texts)
