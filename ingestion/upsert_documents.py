@@ -96,6 +96,7 @@ class EmbedAndStore:
         self.collection_name = collection_name
         self.vectorstore_host = vectorstore_host
         self.vectorstore_port = vectorstore_port
+        self.vectorstore_backend = vectorstore_backend
 
     def run(self, documents: List[Document]) -> None:
         '''
@@ -135,7 +136,7 @@ class EmbedAndStore:
         # Initialize vectorstore client wrapper
         vector_size = len(self.embedder.embed_query("sample text"))
         vectorstore = VectorStoreFactory.create(
-            backend='qdrant',
+            backend=self.vectorstore_backend,
             embeddings=self.embedder,
             collection_name=self.collection_name,
             vector_dim=vector_size,
