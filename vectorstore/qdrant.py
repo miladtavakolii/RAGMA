@@ -131,7 +131,7 @@ class QdrantVectorStoreAdapter(BaseVectorStore):
         self,
         query: str,
         limit: int = 5
-    ) -> List[Dict]:
+    ) -> list[tuple[Document, float]]:
         '''
         Perform semantic similarity search using a raw text query.
 
@@ -176,4 +176,4 @@ class QdrantVectorStoreAdapter(BaseVectorStore):
         results = self.vector_store.similarity_search_with_score(
             query, k=limit)
 
-        return [{'id': doc.id, 'score': score, 'payload': doc.metadata} for doc, score in results]
+        return results

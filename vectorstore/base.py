@@ -57,7 +57,7 @@ class BaseVectorStore(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def search(self, query: str, limit: int = 5) -> List[Dict]:
+    def search(self, query: str, limit: int = 5) -> list[tuple[Document, float]]:
         '''
         Perform semantic similarity search using a text query.
 

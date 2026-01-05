@@ -19,16 +19,10 @@ class VectorRetriever(BaseRetriever):
         '''
         self.vector_store = vector_store
 
-    def retrieve(self, query: str, k: int = 5) -> List[Document]:
+    def retrieve(self, query: str, k: int = 5) -> list[tuple[Document, float]]:
         '''
         Retrieve documents using vector similarity search.
         '''
         results = self.vector_store.search(query, limit=k)
 
-        return [
-            Document(
-                page_content=r['payload'].get('text', ''),
-                metadata=r['payload']
-            )
-            for r in results
-        ]
+        return results
