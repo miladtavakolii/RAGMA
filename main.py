@@ -3,6 +3,7 @@ from retriever.vector_retriever import VectorRetriever
 from pipeline.rag_pipeline import RAGPipeline
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_ollama import ChatOllama
+from query_decomposition.llm_decomposer import LLMQueryDecomposer
 
 def main() -> None:
     embedder = HuggingFaceEmbeddings(model_name='google/embeddinggemma-300m')
@@ -24,14 +25,16 @@ def main() -> None:
         temperature=0,
     )
     # RAG
+    query_decomposer = LLMQueryDecomposer(llm)
     rag = RAGPipeline(
         retriever=retriever,
         llm=llm,
         prompt_path='prompts/simple_rag.txt',
+        query_decomposer=query_decomposer
     )
 
-    answer = rag.run('شبکه عصبی چیست؟')
-    print(answer)
+    answer = rag.run('تفاوت یادگیری ماشین و یادگیری عمیق چیست؟')
+    print(answer.text)
 
 
 if __name__ == '__main__':
