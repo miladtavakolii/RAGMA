@@ -3,6 +3,7 @@ from langchain_core.documents import Document
 from langchain_core.language_models import BaseChatModel
 from langchain.messages import AIMessage
 from retriever.vector_retriever import VectorRetriever
+from query_decomposition.base import BaseQueryDecomposer
 from utils.prompt_loader import load_prompt
 
 
@@ -34,6 +35,8 @@ class RAGPipeline:
         retriever: VectorRetriever,
         llm: BaseChatModel,
         prompt_path: str,
+        query_decomposer: BaseQueryDecomposer | None = None,
+
     ) -> None:
         '''
         Initialize the RAG pipeline.
@@ -53,6 +56,8 @@ class RAGPipeline:
             the following placeholders:
                 - {context}
                 - {question}
+        query_decomposer : BaseQueryDecomposer | None
+            query decomposer that use to decompose user query
 
         Notes
         -----
@@ -62,6 +67,7 @@ class RAGPipeline:
         self.retriever: VectorRetriever = retriever
         self.llm: BaseChatModel = llm
         self.prompt_template: str = load_prompt(prompt_path)
+        self.query_decomposer = query_decomposer
 
     def _build_context(self, documents: List[Document]) -> str:
         '''
@@ -116,7 +122,15 @@ class RAGPipeline:
         - This method can be extended to return sources, scores,
           or structured outputs instead of raw text.
         '''
-        documents: List[Document] = self.retriever.retrieve(question)
+        queries = (
+            self.query_decomposer.decompose(question)
+            if self.query_decomposer
+            else [question]
+        )
+
+        documents = []
+        for q in queries:
+            documents.extend(self.retriever.retrieve(q))
         context: str = self._build_context(documents)
 
         prompt: str = self.prompt_template.format(
