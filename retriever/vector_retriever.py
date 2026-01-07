@@ -1,4 +1,4 @@
-from typing import List
+from typing import Dict
 from langchain_core.documents import Document
 from .base import BaseRetriever
 from vectorstore.base import BaseVectorStore
@@ -19,10 +19,10 @@ class VectorRetriever(BaseRetriever):
         '''
         self.vector_store = vector_store
 
-    def retrieve(self, query: str, k: int = 5) -> list[Document]:
+    def retrieve(self, query: str, k: int = 5, filters: Dict[str, list[tuple]] | None = None) -> list[Document]:
         '''
         Retrieve documents using vector similarity search.
         '''
-        results = self.vector_store.search(query, limit=k)
+        results = self.vector_store.search(query, limit=k, filters=filters)
 
         return [doc for doc, _ in results]
