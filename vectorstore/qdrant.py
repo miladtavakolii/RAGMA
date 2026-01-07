@@ -1,9 +1,10 @@
 from qdrant_client import QdrantClient
-from qdrant_client.models import Distance, VectorParams
+from qdrant_client.models import Distance, VectorParams, Filter, Condition
+from qdrant_client import models
 from langchain_qdrant import QdrantVectorStore
 from langchain_core.embeddings import Embeddings
 from langchain_core.documents import Document
-from typing import List, Dict, Optional
+from typing import Dict, Optional
 from .base import BaseVectorStore
 
 
@@ -50,6 +51,9 @@ class QdrantVectorStoreAdapter(BaseVectorStore):
 
         Parameters
         ----------
+        embeddings : langchain_core.embeddings.Embeddings
+            Embedding model used to convert text into dense vectors.
+            Must follow LangChain's `Embeddings` interface.
         host : str
             The hostname or IP address of the Qdrant server. Defaults to 'localhost'.
         port : int
@@ -127,9 +131,50 @@ class QdrantVectorStoreAdapter(BaseVectorStore):
         '''
         self.vector_store.add_documents(documents=documents)
 
+    def _make_filters(self, filters: Dict[str, list[tuple]]) -> Dict[str, list[Condition]]:
+        '''
+        Convert user-defined filter configuration into Qdrant filter conditions.
+
+        This internal helper method transforms the high-level `filters` dictionary
+        provided at initialization time into Qdrant-native `Condition` objects
+        (`FieldCondition` with `MatchValue`).
+
+        The resulting structure is later used to construct a Qdrant `Filter`
+        object that is applied during similarity search.
+        Parameters
+        ----------
+        filters : Dict[str, list[tuple]]
+            A dictionary defining Qdrant filter clauses to be applied during search.
+
+        Returns
+        -------
+        Dict[str, List[qdrant_client.models.Condition]]
+            A dictionary containing lists of Qdrant filter conditions grouped by
+            boolean clause type:
+
+            - 'must'      : All conditions must match
+            - 'should'    : Optional conditions that increase relevance
+            - 'must_not'  : Conditions that must not match
+        '''
+        qdrant_filters: Dict[str, list[Condition]] = {
+            'should': [],
+            'must': [],
+            'must_not': [],
+        }
+
+        for clauses in self.filters.keys():
+            for condition in self.filters[clauses]:
+                qdrant_filters[clauses].append(models.FieldCondition(
+                    key=condition[0],
+                    match=models.MatchValue(value=condition[1]),
+                ))
+
+        return qdrant_filters
+
     def search(
         self,
         query: str,
+        filters: Dict[str, list[tuple]] | None = None,
         limit: int = 5
     ) -> list[tuple[Document, float]]:
         '''
@@ -152,7 +197,32 @@ class QdrantVectorStoreAdapter(BaseVectorStore):
         ----------
         query : str
             The input query text to search for semantically similar documents.
+        filters : Dict[str, list[tuple]]
+            A dictionary defining Qdrant filter clauses to be applied during search.
 
+            The dictionary keys represent boolean filter types and must be one of:
+            - 'must'      : Conditions that **must** match
+            - 'should'    : Conditions that are optional but boost relevance
+            - 'must_not'  : Conditions that **must not** match
+
+            Each value is a list of `(field_name, value)` tuples.
+
+            Example:
+            --------
+            filters = {
+                "must": [
+                    ("topic", "machine_learning"),
+                ],
+                "should": [
+                    ("language", "fa"),
+                ],
+                "must_not": [
+                    ("source", "draft"),
+                ],
+            }
+
+            These filters are converted internally into Qdrant `Filter` and
+            `FieldCondition` objects and applied at query time.
         limit : int, default=5
             Maximum number of results to return.
 
@@ -173,7 +243,15 @@ class QdrantVectorStoreAdapter(BaseVectorStore):
         - Uses cosine similarity under the hood
         - Scores are higher for more semantically similar documents
         '''
+        if filters:
+            qdrant_filters = self._make_filters(filters)
+        else:
+            qdrant_filters = {
+                'should': [],
+                'must': [],
+                'must_not': [],
+            }
         results = self.vector_store.similarity_search_with_score(
-            query, k=limit)
+            query, k=limit, filter=Filter(must=qdrant_filters['must'], should=qdrant_filters['should'], must_not=qdrant_filters['must_not']))
 
         return results
