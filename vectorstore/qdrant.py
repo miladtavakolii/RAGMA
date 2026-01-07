@@ -165,7 +165,7 @@ class QdrantVectorStoreAdapter(BaseVectorStore):
         for clauses in filters.keys():
             for condition in filters[clauses]:
                 qdrant_filters[clauses].append(models.FieldCondition(
-                    key=condition[0],
+                    key='metadata.' + condition[0],
                     match=models.MatchValue(value=condition[1]),
                 ))
 
