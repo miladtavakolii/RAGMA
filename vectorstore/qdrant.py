@@ -162,8 +162,8 @@ class QdrantVectorStoreAdapter(BaseVectorStore):
             'must_not': [],
         }
 
-        for clauses in self.filters.keys():
-            for condition in self.filters[clauses]:
+        for clauses in filters.keys():
+            for condition in filters[clauses]:
                 qdrant_filters[clauses].append(models.FieldCondition(
                     key=condition[0],
                     match=models.MatchValue(value=condition[1]),
