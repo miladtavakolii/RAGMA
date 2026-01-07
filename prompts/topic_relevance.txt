@@ -31,6 +31,6 @@ Important Rules:
 - Do NOT add any extra fields
 
 Output Format (STRICT JSON ONLY):
-{
+{{
   "question": <integer between 0 and 100>
-}
+}}
