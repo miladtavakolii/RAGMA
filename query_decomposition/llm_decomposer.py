@@ -2,6 +2,8 @@ from typing import List
 from langchain_core.language_models import BaseChatModel
 from langchain.messages import HumanMessage, AIMessage, SystemMessage
 from utils.prompt_loader import load_prompt
+import re
+import json
 
 from .base import BaseQueryDecomposer
 
@@ -52,7 +54,8 @@ class LLMQueryDecomposer(BaseQueryDecomposer):
             A list of sub-queries. If decomposition fails,
             the original query is returned as a single-element list.
         '''
-        system_msg = SystemMessage(load_prompt('prompts/query_decomposition.txt'))
+        system_msg = SystemMessage(load_prompt(
+            'prompts/query_decomposition.txt'))
         human_msg = HumanMessage(query)
 
         messages = [system_msg, human_msg]
@@ -76,10 +79,16 @@ class LLMQueryDecomposer(BaseQueryDecomposer):
         List[str]
             Cleaned list of sub-queries.
         '''
-        lines = response.splitlines()
+        cleaned = re.sub(r"```(?:json)?", "", response).strip()
 
-        return [
-            line.strip()
-            for line in lines
-            if line.strip()
-        ]
+        try:
+            # Parse JSON array
+            questions = json.loads(cleaned)
+
+            # Ensure output is a list of strings
+            return [q.strip() for q in questions if isinstance(q, str)]
+
+        except json.JSONDecodeError:
+            # Fallback: line-based parsing (graceful degradation)
+            lines = cleaned.splitlines()
+            return [line.strip() for line in lines if line.strip()]
